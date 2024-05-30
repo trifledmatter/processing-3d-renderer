@@ -1,6 +1,7 @@
 import java.util.HashSet;
 import java.util.Set;
 
+import java.awt.event.KeyEvent;
 import java.awt.AWTException;
 import java.awt.MouseInfo;
 import java.awt.Point;
@@ -10,6 +11,9 @@ final private boolean DEBUG_MODE = false;
 final private int     DEBUG_PLAYER_COLOR_R = 255;
 final private int     DEBUG_PLAYER_COLOR_G = 0;
 final private int     DEBUG_PLAYER_COLOR_B = 0;
+
+float scene_delta_time = 0;
+float scene_fps = 0;
 
 /*
 * dn: to whomever is reading this, you'll see _IMMU or _IMMU_C associated with finals in this project.
@@ -38,7 +42,7 @@ float __player_velocity_y = 0;
 float __player_speed = 0.7;
 float __player_sprint_speed = 5;
 
-float __player_size_h = 100;
+float __player_size_h = 50;
 
 boolean __player_on_ground = false;
 
@@ -63,13 +67,15 @@ final private char _IMMU_C_KEY_RIGHT = 'd';
 final private char _IMMU_C_KEY_JUMP = ' ';
 final private char _IMMU_C_KEY_SPRINT = 'q'; // -- TODO: replace with shift
 
-int __scene_background = 200;
-float __scene_gravity = 0.01;
+final int __scene_background_r = 135;
+final int __scene_background_g = 206;
+final int __scene_background_b = 235;
+
+float __scene_gravity = 0.06;
 ArrayList<Platform> __scene_platforms;
 
 Robot __IMMU_C_WINDOW_MANAGER;
 Set<Character> __KEY_BUFFER = new HashSet<Character>();
-
 
 void setup () {
   size(_IMMU_C_WINDOW_W, _IMMU_C_WINDOW_H, P3D); // -- p3d is required for a 3d context, even though i'm doing most of the heavy lifting in the code
@@ -83,8 +89,7 @@ void setup () {
   
   __scene_platforms = new ArrayList<Platform>();
   __scene_platforms.add( new Platform(-100, 200, height / 2 + 50, 200, 20, 200) ); // dn: (1) [x, y, z] :: coordinates -> (2) [w, h, d] :: dimensions
-  
-  
+
   try { __IMMU_C_WINDOW_MANAGER = new Robot(); } catch (AWTException e) { e.printStackTrace(); }
   
   noCursor();
@@ -94,7 +99,7 @@ void setup () {
 void reapply_perspective () { perspective(__player_camera_fov, float(width) / float(height), _IMMU_PLAYER_RENDER_DISTANCE_NEAREST, _IMMU_PLAYER_RENDER_DISTANCE_FARTHEST); }
 
 void draw () {
-  background(__scene_background);
+  background(__scene_background_r, __scene_background_g, __scene_background_b);
   
   // TODO: player stuff here
   handlePlayerMovement();
@@ -142,7 +147,7 @@ void applyGravity() {
 
 void renderScene () {
    // -- floor
-   int floor_color = 150;
+   int floor_color = 100;
    
    pushMatrix();
    translate(0, height / 2 + 100, 0);
@@ -174,9 +179,11 @@ void handlePlayerMovement () {
     __player_loc_z -= sin(radians(__player_camera_looking_at.y)) * __player_speed;
   }
   if (__KEY_BUFFER.contains(_IMMU_C_KEY_SPRINT)) {
+    //key == _IMMU_C_KEY_SPRINT
     __player_speed = _IMMU_PLAYER_SPRINT_SPEED;
     __player_camera_fov = _IMMU_PLAYER_SPRINT_FOV;
     reapply_perspective();
+    
   } else {
     __player_speed = _IMMU_PLAYER_SPEED;
     __player_camera_fov = _IMMU_PLAYER_FOV;
@@ -184,7 +191,7 @@ void handlePlayerMovement () {
   }
   if (__KEY_BUFFER.contains(_IMMU_C_KEY_JUMP)) {
     if (__player_on_ground) {
-      __player_velocity_y = -1;
+      __player_velocity_y = -5;
       __player_on_ground = false;
     }
   }
