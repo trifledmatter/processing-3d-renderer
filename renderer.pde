@@ -31,12 +31,14 @@ final private float _IMMU_PLAYER_RENDER_DISTANCE_FARTHEST = 1500;
 *  dn - player config
 */
 
+int __PLAYER_SCORE = 0;
+
 float __player_loc_x;
 float __player_loc_y;
 float __player_loc_z;
 
 int __player_coordinates_x = -500;
-int __player_coordinates_y = 0;
+int __player_coordinates_y = 1;
 int __player_coordinates_z = 0;
 
 final private float _IMMU_PLAYER_SPEED = 0.7;
@@ -79,12 +81,12 @@ final int __scene_floor_r = 28;
 final int __scene_floor_g = 28;
 final int __scene_floor_b = 28;
 
-final int __scene_wall_height = 2000;
+final int __scene_wall_height = 5000;
+final int __scene_wall_size = 100;
 
 float __scene_gravity = 0.06;
 ArrayList<Platform> __scene_platforms;
 ArrayList<Wall> __scene_walls;
-
 
 Robot __IMMU_C_WINDOW_MANAGER;
 Set<Character> __KEY_BUFFER = new HashSet<Character>();
@@ -100,8 +102,14 @@ void setup () {
   __player_camera_looking_at = new PVector(0, 0, 0);
   
   __scene_platforms = new ArrayList<Platform>();
-  __scene_platforms.add( new Platform(-100, 300, height / 2 + 50, 200, 20, 200) ); // dn: (1) [x, y, z] :: coordinates -> (2) [w, h, d] :: dimensions
-  __scene_platforms.add( new Platform(-500, 200, height / 2 + -200, 200, 20, 200) ); // dn: (1) [x, y, z] :: coordinates -> (2) [w, h, d] :: dimensions
+  __scene_platforms.add( new Platform(-100, 300, height / 2 + 50, __scene_wall_size, 20, __scene_wall_size) ); // dn: (1) [x, y, z] :: coordinates -> (2) [w, h, d] :: dimensions
+  __scene_platforms.add( new Platform(-400, 200, height / 2 + -150, __scene_wall_size, 20, __scene_wall_size) );
+  __scene_platforms.add( new Platform(-200, 50, height / 2 + -300, __scene_wall_size, 20, __scene_wall_size) );
+  __scene_platforms.add( new Platform(-200, 0, height / 2 + -725, __scene_wall_size, 20, __scene_wall_size) );
+  __scene_platforms.add( new Platform(0, -100, height / 2 + -750, __scene_wall_size, 20, __scene_wall_size) );
+  __scene_platforms.add( new Platform(200, -300, height / 2 + -500, __scene_wall_size, 20, __scene_wall_size) );
+  __scene_platforms.add( new Platform(400, -500, height / 2 + -500, __scene_wall_size, 20, __scene_wall_size) );
+  __scene_platforms.add( new Platform(400, -600, height / 2 + -600, __scene_wall_size, 20, __scene_wall_size) );
 
   __scene_walls = new ArrayList<Wall>();
   __scene_walls.add( new Wall(0, height / 2 - 100, 500, 1000, __scene_wall_height, 20, 150)  ); // x y z w h d
@@ -130,6 +138,9 @@ void draw () {
   lights();
   renderScene();
   
+  // scores
+  System.out.println(__PLAYER_SCORE);
+  
   if (DEBUG_MODE) {
     renderPlayerWithScene();
   }
@@ -143,7 +154,7 @@ void mouseMoved() {
 
   __player_camera_looking_at.y += (mouseX - width / 2) * __player_camera_sensitivity;
   __player_camera_looking_at.x += (mouseY - height / 2) * __player_camera_sensitivity;
-  __player_camera_looking_at.x = constrain(__player_camera_looking_at.x, -90, 90);
+  __player_camera_looking_at.x = constrain(__player_camera_looking_at.x, -75, 75); // -- dn: was 90 deg but reduced to fix issue with camera clipping through scene objects
 
   __IMMU_C_WINDOW_MANAGER.mouseMove((displayWidth - width) / 2 + width / 2, (displayHeight - height) / 2 + height / 2); // dn: ensuring the mouse is always in the middle of the screen
 }
@@ -239,6 +250,8 @@ void movePlayer() {
   * dn: platform collision detection
   */
   for (Platform p : __scene_platforms) {
+    boolean __already_updated_score = false;
+    
     if (__player_loc_x > p.x - p.w / 2 && __player_loc_x < p.x + p.w / 2 &&
         __player_loc_z > p.z - p.d / 2 && __player_loc_z < p.z + p.d / 2 &&
         __player_loc_y + __player_size_h / 2 > p.y - p.h / 2 &&
@@ -247,7 +260,25 @@ void movePlayer() {
       __player_loc_y = p.y - p.h / 2 - __player_size_h / 2;
       __player_on_ground = true;
       __player_velocity_y = 0;
+      
+      p.interacted_with_platform = true;
+      
+      // -- update platform color
+      p.r = 0;
+      p.g = 255;
+      p.b = 0;
     }
+    
+    // -- score updating
+
+    if (p.interacted_with_platform) {
+        if (!__already_updated_score) {
+          __PLAYER_SCORE += 1;
+        }
+        p.interacted_with_platform = false;
+        __already_updated_score = true;
+
+      }
   }
   
   /*

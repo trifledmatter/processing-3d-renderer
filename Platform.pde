@@ -4,6 +4,8 @@ class Platform {
   
   int r, g, b; // -- colors
   
+  boolean interacted_with_platform = false;
+  
   Platform (
   
     float x,
@@ -57,9 +59,9 @@ class Platform {
     this.h = h;
     this.d = d;
     
-    this.r = 100;
-    this.g = 100;
-    this.b = 100;
+    this.r = (int) Math.floor(random(255));
+    this.g = (int) Math.floor(random(255));
+    this.b = (int) Math.floor(random(255));
   
   }
   
