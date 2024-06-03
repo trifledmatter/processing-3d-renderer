@@ -25,7 +25,7 @@ final private int _IMMU_C_WINDOW_H = 720;
 final private int _IMMU_C_WINDOW_W = 1280;
 
 final private float _IMMU_PLAYER_RENDER_DISTANCE_NEAREST = 0.01;
-final private float _IMMU_PLAYER_RENDER_DISTANCE_FARTHEST = 1000;
+final private float _IMMU_PLAYER_RENDER_DISTANCE_FARTHEST = 1500;
 
 /*
 *  dn - player config
@@ -35,19 +35,23 @@ float __player_loc_x;
 float __player_loc_y;
 float __player_loc_z;
 
+int __player_coordinates_x = -500;
+int __player_coordinates_y = 0;
+int __player_coordinates_z = 0;
+
 final private float _IMMU_PLAYER_SPEED = 0.7;
 final private float _IMMU_PLAYER_SPRINT_SPEED = 2;
   
 float __player_velocity_y = 0;
 float __player_speed = 0.7;
-float __player_sprint_speed = 5;
+float __player_sprint_speed = 7;
 
 float __player_size_h = 50;
 
 boolean __player_on_ground = false;
 
-final private float _IMMU_PLAYER_FOV = 1;
-final private float _IMMU_PLAYER_SPRINT_FOV = 1.1;
+final private float _IMMU_PLAYER_FOV = 1.5;
+final private float _IMMU_PLAYER_SPRINT_FOV = 2;
 
 PVector __player_camera_position;
 PVector __player_camera_looking_at;
@@ -65,14 +69,22 @@ final private char _IMMU_C_KEY_LEFT = 'a';
 final private char _IMMU_C_KEY_RIGHT = 'd';
 
 final private char _IMMU_C_KEY_JUMP = ' ';
-final private char _IMMU_C_KEY_SPRINT = 'q'; // -- TODO: replace with shift
+final private char _IMMU_C_KEY_SPRINT = 'r'; // -- TODO: replace with shift
 
 final int __scene_background_r = 135;
 final int __scene_background_g = 206;
 final int __scene_background_b = 235;
 
+final int __scene_floor_r = 28;
+final int __scene_floor_g = 28;
+final int __scene_floor_b = 28;
+
+final int __scene_wall_height = 2000;
+
 float __scene_gravity = 0.06;
 ArrayList<Platform> __scene_platforms;
+ArrayList<Wall> __scene_walls;
+
 
 Robot __IMMU_C_WINDOW_MANAGER;
 Set<Character> __KEY_BUFFER = new HashSet<Character>();
@@ -80,15 +92,23 @@ Set<Character> __KEY_BUFFER = new HashSet<Character>();
 void setup () {
   size(_IMMU_C_WINDOW_W, _IMMU_C_WINDOW_H, P3D); // -- p3d is required for a 3d context, even though i'm doing most of the heavy lifting in the code
   
-  __player_loc_x = width / 2;
-  __player_loc_y = height / 2;
-  __player_loc_z = 0;
+  __player_loc_x = width / 2 + __player_coordinates_x;
+  __player_loc_y = height / 2 + __player_coordinates_y;
+  __player_loc_z = 0 + __player_coordinates_z;
   
   __player_camera_position = new PVector(__player_loc_x, __player_loc_y, __player_loc_z);
   __player_camera_looking_at = new PVector(0, 0, 0);
   
   __scene_platforms = new ArrayList<Platform>();
-  __scene_platforms.add( new Platform(-100, 200, height / 2 + 50, 200, 20, 200) ); // dn: (1) [x, y, z] :: coordinates -> (2) [w, h, d] :: dimensions
+  __scene_platforms.add( new Platform(-100, 300, height / 2 + 50, 200, 20, 200) ); // dn: (1) [x, y, z] :: coordinates -> (2) [w, h, d] :: dimensions
+  __scene_platforms.add( new Platform(-500, 200, height / 2 + -200, 200, 20, 200) ); // dn: (1) [x, y, z] :: coordinates -> (2) [w, h, d] :: dimensions
+
+  __scene_walls = new ArrayList<Wall>();
+  __scene_walls.add( new Wall(0, height / 2 - 100, 500, 1000, __scene_wall_height, 20, 150)  ); // x y z w h d
+  __scene_walls.add( new Wall(0, height / 2 - 100, -500, 1000, __scene_wall_height, 20, 100)  ); // x y z w h d'
+  
+  __scene_walls.add( new Wall(500, height / 2 - 100, 0, 20, __scene_wall_height, 1000, 200)  ); // x y z w h d
+  __scene_walls.add( new Wall(-500, height / 2 - 100, 0, 20, __scene_wall_height, 1000, 255)  ); // x y z w h d
 
   try { __IMMU_C_WINDOW_MANAGER = new Robot(); } catch (AWTException e) { e.printStackTrace(); }
   
@@ -147,17 +167,21 @@ void applyGravity() {
 
 void renderScene () {
    // -- floor
-   int floor_color = 100;
-   
+     
    pushMatrix();
    translate(0, height / 2 + 100, 0);
-   fill(floor_color);
+   fill(__scene_floor_r, __scene_floor_g, __scene_floor_b);
    box(1000, 20, 1000);
    popMatrix();
    
    // -- platforms
    for (Platform p : __scene_platforms) {
     p.display();
+  }
+  
+  // -- walls
+  for (Wall w : __scene_walls) {
+    w.display();
   }
 }
 
@@ -223,6 +247,40 @@ void movePlayer() {
       __player_loc_y = p.y - p.h / 2 - __player_size_h / 2;
       __player_on_ground = true;
       __player_velocity_y = 0;
+    }
+  }
+  
+  /*
+  * dn: wall collision
+  */
+  for (Wall w : __scene_walls) {
+    if (__player_loc_x + 10 > w.x - w.w / 2 && __player_loc_x - 10 < w.x + w.w / 2 &&
+        __player_loc_y + __player_size_h / 2 > w.y - w.h / 2 && __player_loc_y - __player_size_h / 2 < w.y + w.h / 2 &&
+        __player_loc_z + 10 > w.z - w.d / 2 && __player_loc_z - 10 < w.z + w.d / 2) {
+
+      float dx = min(abs(__player_loc_x + 10 - (w.x - w.w / 2)), abs(__player_loc_x - 10 - (w.x + w.w / 2)));
+      float dy = min(abs(__player_loc_y + __player_size_h / 2 - (w.y - w.h / 2)), abs(__player_loc_y - __player_size_h / 2 - (w.y + w.h / 2)));
+      float dz = min(abs(__player_loc_z + 10 - (w.z - w.d / 2)), abs(__player_loc_z - 10 - (w.z + w.d / 2)));
+
+      if (dx < dy && dx < dz) {
+        if (__player_loc_x < w.x) {
+          __player_loc_x = w.x - w.w / 2 - 10;
+        } else {
+          __player_loc_x = w.x + w.w / 2 + 10;
+        }
+      } else if (dy < dx && dy < dz) {
+        if (__player_loc_y < w.y) {
+          __player_loc_y = w.y - w.h / 2 - __player_size_h / 2;
+        } else {
+          __player_loc_y = w.y + w.h / 2 + __player_size_h / 2;
+        }
+      } else {
+        if (__player_loc_z < w.z) {
+          __player_loc_z = w.z - w.d / 2 - 10;
+        } else {
+          __player_loc_z = w.z + w.d / 2 + 10;
+        }
+      }
     }
   }
 }
