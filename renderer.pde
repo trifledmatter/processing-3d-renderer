@@ -1,5 +1,5 @@
 /*
-* Ethan Pelletier
+* Ethan
 * Processing Assignemnt - Computer Science 120
 * Mr. Pope
 * May 27th, 2024
